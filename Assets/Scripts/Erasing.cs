@@ -5,14 +5,16 @@ namespace Scriprs
     public interface IErasing
     {
         void Initialise(IErasable erasable);
-        void BeginErase(Vector3 worldPosition);
         void Erase(Vector2 worldPosition);
+        void Nothing();
+
+        void DebugDraw();
     }
     
     public class Erasing : IErasing 
     {
         private IErasable _erasable;
-        private Vector2Int _oldPosition;
+        private Vector2Int? _oldPosition = null;
         private int x0, y0, x1, y1;
         private Color _oldColor;
         private int _drawPixelX;
@@ -20,29 +22,50 @@ namespace Scriprs
         private Color _paintColor;
         private float _x2;
         private float _y2;
-        private float _r2;
 
         private const int BrushSize = 42;
         private const float Alpha = 0.5f;
+        private readonly int _halfBrushSize = BrushSize / 2;
+        private readonly float _r2 = Mathf.Pow(BrushSize / 2f - 0.5f, 2);
+        
+        private int _textureHeight;
+        private int _textureWidth;
+        private int _changedPixel;
 
         public void Initialise(IErasable erasable)
         {
             _erasable = erasable;
             _erasable.Reset();
-        }
 
-        public void BeginErase(Vector3 hitPoint)
+            _textureHeight = _erasable.Texture.height;
+            _textureWidth = _erasable.Texture.width;
+        }
+        
+
+        public void DebugDraw()
         {
-            _oldPosition = PositionOnTheSprite(PercentageClickPosition(hitPoint));
+            Debug.Log($"DEBUG DRAW!");
+            _oldPosition = Vector2Int.zero;
+            DrawLine(new Vector2Int(300, 400));
+            _erasable.UpdateTexture();
         }
 
         public void Erase(Vector2 hitPoint)
         {
-            var endPosition = PositionOnTheSprite(PercentageClickPosition(hitPoint));
-            
-            DrawLine(endPosition);
-            
-            _erasable.UpdateTexture();
+            if (_oldPosition == null)
+            {
+                _oldPosition = PositionOnTheSprite(PercentageClickPosition(hitPoint));
+            }
+            else
+            {
+                DrawLine(PositionOnTheSprite(PercentageClickPosition(hitPoint)));
+                _erasable.UpdateTexture();
+            }
+        }
+        
+        public void Nothing()
+        {
+            _oldPosition = null;
         }
 
         Vector2 PercentageClickPosition(Vector2 hitpoint)
@@ -65,28 +88,30 @@ namespace Scriprs
         //http://members.chello.at/~easyfilter/bresenham.html
         private void DrawLine(Vector2Int endPosition)
         {
-            x0 = _oldPosition.x;
-            y0 = _oldPosition.y;
+            x0 = _oldPosition.Value.x;
+            y0 = _oldPosition.Value.y;
             x1 = endPosition.x;
             y1 = endPosition.y;
 
-            int dx =  Mathf.Abs(x1-x0), sx = x0<x1 ? 1 : -1;
-            int dy = -Mathf.Abs(y1-y0), sy = y0<y1 ? 1 : -1; 
+            int step = 1;
+
+            int dx =  Mathf.Abs(x1-x0), sx = x0<x1 ? step : -step;
+            int dy = -Mathf.Abs(y1-y0), sy = y0<y1 ? step : -step; 
             int err = dx+dy, e2; /* error value e_xy */
 
             var count = 0;
             for(;;){  /* loop */
                 
-                DrawCircle(x0, y0);
+                if(count % 10 == 0)
+                    DrawCircle(x0, y0);
+                
                 if (x0==x1 && y0==y1) break;
-                e2 = 6 * err;
+                e2 = 2 * err;
                 if (e2 >= dy) { err += dy; x0 += sx; } /* e_xy+e_x > 0 */
                 if (e2 <= dx) { err += dx; y0 += sy; } /* e_xy+e_y < 0 */
 
                 count++;
             }
-            
-            Debug.Log($"Count: {count}");
 
             _oldPosition = endPosition;
         }
@@ -97,20 +122,25 @@ namespace Scriprs
             {
                 for (int y = 0; y < BrushSize; y++)
                 {
-                    _x2 = Mathf.Pow(x  - BrushSize / 2f, 2);
-                    _y2 = Mathf.Pow(y - BrushSize / 2f, 2);
-                    _r2 = Mathf.Pow(BrushSize / 2f - 0.5f, 2);
-                    
+                    _x2 = (x - _halfBrushSize) * (x - _halfBrushSize);
+                    _y2 = (y - _halfBrushSize) * (y - _halfBrushSize);
+
                     if (_x2 + _y2 < _r2)
                     {
-                        _drawPixelX = pointX + x - BrushSize / 2;
-                        _drawPixelY = pointY + y - BrushSize / 2;
-
-                        if (_drawPixelX >= 0 && _drawPixelX < _erasable.Texture.height && _drawPixelY >= 0 && _drawPixelY < _erasable.Texture.width)
+                        _drawPixelX = pointX + x - _halfBrushSize;
+                        _drawPixelY = pointY + y - _halfBrushSize;
+                        
+                        if (_drawPixelX >= 0 && _drawPixelX < _textureWidth && _drawPixelY >= 0 && _drawPixelY < _textureHeight)
                         {
-                            _oldColor = _erasable.Colors[_drawPixelX + _drawPixelY * _erasable.Texture.width];
-                            _paintColor = Color.Lerp(_oldColor, Color.clear, Alpha);
-                            _erasable.Colors[_drawPixelX + _drawPixelY * _erasable.Texture.width] = _paintColor;
+                            //_oldColor = _erasable.Colors[_changedPixel];
+
+                            //_paintColor = Color.Lerp(_oldColor, Color.clear, Alpha);
+                            //_paintColor = Color.clear;
+                            //_erasable.Colors[_changedPixel] = _paintColor;
+                            
+                            //_erasable.Colors[_changedPixel] = Color.clear;
+                            
+                            _erasable.Colors[_drawPixelX + _drawPixelY * _textureWidth] = Color.clear;
                         }
                     }
                 }

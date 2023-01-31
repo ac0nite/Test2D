@@ -6,8 +6,6 @@ using UnityEngine.EventSystems;
 public class Dragable : MonoBehaviour
 {
     [SerializeField] private InputHandler _input;
-
-    public event Action<Vector2> OnBeginPosition;
     public event Action<Vector2> OnChangedPosition;
     
     private Vector2 _worldPosition;
@@ -32,15 +30,7 @@ public class Dragable : MonoBehaviour
     private void TryToBeginDrag(PointerEventData pointerEventData)
     {
         _worldPosition = Camera.main.ScreenToWorldPoint(pointerEventData.position);
-
         _isDraggable = _collider.OverlapPoint(_worldPosition);
-        
-        Debug.Log($"_isDraggable: {_isDraggable}");
-            
-        if (_isDraggable)
-        {
-            OnBeginPosition?.Invoke(_worldPosition);
-        }
     }
 
     private void TryToDrag(PointerEventData pointerEventData)
@@ -57,7 +47,11 @@ public class Dragable : MonoBehaviour
     private void TryToEndDrag(PointerEventData pointerEventData)
     {
         _isDraggable = false;
-        transform.position = _defaultPosition;
+        
+        LeanTween.move(gameObject, _defaultPosition, 1f)
+            .setSpeed(20f)
+            .setOnStart(() => _collider.enabled = false)
+            .setOnComplete(() => _collider.enabled = true);
     }
 
     private void OnDestroy()
