@@ -7,7 +7,6 @@ namespace Scriprs
         void Initialise(IErasable erasable);
         void Erase(Vector2 worldPosition);
         void Nothing();
-
         void DebugDraw();
     }
     
@@ -23,10 +22,10 @@ namespace Scriprs
         private float _x2;
         private float _y2;
 
-        private const int BrushSize = 42;
-        private const float Alpha = 0.5f;
-        private readonly int _halfBrushSize = BrushSize / 2;
-        private readonly float _r2 = Mathf.Pow(BrushSize / 2f - 0.5f, 2);
+        private int _brushSize;
+        private const float Alpha = 0.2f;
+        private int _halfBrushSize;
+        private float _r2;
         
         private int _textureHeight;
         private int _textureWidth;
@@ -39,6 +38,9 @@ namespace Scriprs
 
             _textureHeight = _erasable.Texture.height;
             _textureWidth = _erasable.Texture.width;
+            _brushSize = erasable.BrushSize;
+            _halfBrushSize = _brushSize / 2;
+            _r2 = Mathf.Pow(_brushSize / 2f - 0.5f, 2);
         }
         
 
@@ -102,7 +104,7 @@ namespace Scriprs
             var count = 0;
             for(;;){  /* loop */
                 
-                if(count % 10 == 0)
+                if(count % 2 == 0)
                     DrawCircle(x0, y0);
                 
                 if (x0==x1 && y0==y1) break;
@@ -118,9 +120,9 @@ namespace Scriprs
 
         private void DrawCircle(int pointX, int pointY)
         {
-            for (int x = 0; x < BrushSize; x++)
+            for (int x = 0; x < _brushSize; x++)
             {
-                for (int y = 0; y < BrushSize; y++)
+                for (int y = 0; y < _brushSize; y++)
                 {
                     _x2 = (x - _halfBrushSize) * (x - _halfBrushSize);
                     _y2 = (y - _halfBrushSize) * (y - _halfBrushSize);
@@ -132,15 +134,10 @@ namespace Scriprs
                         
                         if (_drawPixelX >= 0 && _drawPixelX < _textureWidth && _drawPixelY >= 0 && _drawPixelY < _textureHeight)
                         {
-                            //_oldColor = _erasable.Colors[_changedPixel];
+                            _changedPixel = _drawPixelX + _drawPixelY * _textureWidth;
+                            _erasable.Colors[_changedPixel] = Color.Lerp(_erasable.Colors[_changedPixel], Color.clear, Alpha);
 
-                            //_paintColor = Color.Lerp(_oldColor, Color.clear, Alpha);
-                            //_paintColor = Color.clear;
-                            //_erasable.Colors[_changedPixel] = _paintColor;
-                            
-                            //_erasable.Colors[_changedPixel] = Color.clear;
-                            
-                            _erasable.Colors[_drawPixelX + _drawPixelY * _textureWidth] = Color.clear;
+                            // _erasable.Colors[_drawPixelX + _drawPixelY * _textureWidth] = Color.clear;
                         }
                     }
                 }

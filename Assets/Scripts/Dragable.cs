@@ -6,6 +6,7 @@ using UnityEngine.EventSystems;
 public class Dragable : MonoBehaviour
 {
     [SerializeField] private InputHandler _input;
+    [SerializeField] private Vector2 _offset = Vector2.zero;
     public event Action<Vector2> OnChangedPosition;
     
     private Vector2 _worldPosition;
@@ -39,15 +40,20 @@ public class Dragable : MonoBehaviour
 
         if (_isDraggable)
         {
-            transform.position = _worldPosition;
-            OnChangedPosition?.Invoke(_worldPosition);
+            transform.position = _worldPosition + _offset;
+            OnChangedPosition?.Invoke(_worldPosition + _offset);
         }
     }
     
     private void TryToEndDrag(PointerEventData pointerEventData)
     {
+        if(!_isDraggable)
+            return;
+        
         _isDraggable = false;
         
+        Debug.Log($"TryToEndDrag");
+
         LeanTween.move(gameObject, _defaultPosition, 1f)
             .setSpeed(20f)
             .setOnStart(() => _collider.enabled = false)

@@ -34,7 +34,13 @@ namespace Scriprs
         public bool Lock
         {
             get => !_image.raycastTarget;
-            set => _image.raycastTarget = !value;
+            set
+            {
+                if(value) 
+                    OnInputEndDrag?.Invoke(null);
+                
+                _image.raycastTarget = !value;
+            }
         }
 
         public void OnPointerDown(PointerEventData eventData)

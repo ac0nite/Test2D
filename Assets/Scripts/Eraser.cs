@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using Unity.Profiling;
@@ -5,29 +6,113 @@ using UnityEngine;
 
 namespace Scriprs
 {
-    public class Eraser : MonoBehaviour
+    public interface IEraser
     {
-        [SerializeField] private Erasable _erasable;
+        void Initialize(IErasable erasable);
+        event Action OnSuccessfulErasing;
+    }
+    public class Eraser : MonoBehaviour, IEraser
+    {
         [SerializeField] private Dragable _dragable;
         [SerializeField] private ColliderSpawner _colliderSpawner;
         [SerializeField] LayerMask _mask;
+
+        private const float ThresholdRemainingPixels = 0.08f;
         
         private RaycastHit2D[] _hits = new RaycastHit2D[1];
-        private IErasing _erasing;
+        private IErasing _erasing = new Erasing();
         private ILineFactory _line;
+        private List<int> _remainingPixels = new List<int>();
+        private Coroutine _coroutine = null;
+        private IErasable _erasable;
+        
+        public event Action OnSuccessfulErasing;
 
-        private void Start()
+        private void Awake()
         {
             _line = _colliderSpawner.GetComponent<ILineFactory>();
             _dragable.OnChangedPosition += TryToErasing;
-            
-            _erasing = new Erasing();
-            _erasing.Initialise(_erasable);
 
             //StartCoroutine(DrawDebugCoroutine());
-            StartCoroutine(CalculateCoroutine());
+            //StartCoroutine(CalculateRemainingPixelsCoroutine());
         }
 
+        public void Initialize(IErasable erasable)
+        {
+            _erasable = erasable;
+            _erasing.Initialise(erasable);
+            
+            _line.AllDispose();
+        }
+
+        private void TryToErasing(Vector2 worldPosition)
+        {
+            if (CanErase(worldPosition))
+            {
+                _erasing.Erase(_hits[0].point);
+                _line.Point(_hits[0].point);
+                StartCalculateRemainingPixels();
+            }
+            else
+            {
+                _erasing.Nothing();
+                _line.EndPoint();
+            }
+        }
+
+        private bool CanErase(Vector2 worldPosition)
+        {
+            return Physics2D.RaycastNonAlloc(worldPosition, Vector2.zero, _hits, 10f, _mask) > 0;
+        }
+
+        private void OnDestroy()
+        {
+            _dragable.OnChangedPosition -= TryToErasing;
+        }
+        
+        private void StartCalculateRemainingPixels()
+        {
+            if (_coroutine == null)
+            {
+                _coroutine = StartCoroutine(CalculateRemainingPixelsCoroutine());   
+            }
+        }
+        private void StopCalculateRemainingPixels()
+        {
+            if (_coroutine != null)
+            {
+                StopCoroutine(_coroutine);
+                _coroutine = null;
+            }
+        }
+        private IEnumerator CalculateRemainingPixelsCoroutine()
+        {
+            var amount = _erasable.Colors.Length;
+            
+            _remainingPixels.Clear();
+            
+            for (int i = 0; i < amount; i++)
+                _remainingPixels.Add(i);
+
+            while (true)
+            {
+                yield return new WaitForSeconds(2f);
+                _remainingPixels.RemoveAll(index => _erasable.Colors[index].a < 0.01f);
+                
+                Debug.Log($"_remainingPixels: {(float) _remainingPixels.Count / amount}");
+
+                if ((float) _remainingPixels.Count / amount < ThresholdRemainingPixels)
+                {
+                    OnSuccessfulErasing?.Invoke();
+                    break;
+                }
+            }
+
+            _coroutine = null;
+            _erasing.Nothing();
+        }  
+
+        #region DEBUG
 
 #if UNITY_EDITOR
         static readonly ProfilerMarker ProfilerMarker = new ProfilerMarker("XXX_DRAW_XXX");
@@ -41,53 +126,7 @@ namespace Scriprs
             ProfilerMarker.End();
         }  
 #endif
-        
-        private IEnumerator CalculateCoroutine()
-        {
-            var amount = _erasable.Colors.Length;
-            List<int> NotCleared = new List<int>();
 
-            for (int i = 0; i < amount; i++)
-                NotCleared.Add(i);
-
-            while (true)
-            {
-                yield return new WaitForSeconds(5f);
-                CalculateMarker.Begin();
-                NotCleared.RemoveAll(index => _erasable.Colors[index].a == 0);
-                CalculateMarker.End();
-                
-                //Debug.Log($"CLEARED: {(float) (amount - NotCleared.Count)/amount * 100f}");
-            }
-        }  
-
-        private void TryToErasing(Vector2 worldPosition)
-        {
-            if (CanErase(worldPosition))
-            {
-                _erasing.Erase(_hits[0].point);
-                _line.Point(_hits[0].point);
-            }
-            else
-            {
-                _erasing.Nothing();
-                //_line.EndPoint();
-            }
-        }
-
-        private bool CanErase(Vector2 worldPosition)
-        {
-            if (Physics2D.RaycastNonAlloc(worldPosition, Vector2.zero, _hits, 10f, _mask) > 0)
-            {
-                return true;
-            }
-
-            return false;
-        }
-
-        private void OnEnable()
-        {
-            _dragable.OnChangedPosition -= TryToErasing;
-        }
+        #endregion
     }
 }
