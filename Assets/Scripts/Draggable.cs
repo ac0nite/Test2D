@@ -1,13 +1,14 @@
 using System;
-using Scriprs;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using Utils;
 
-public class Dragable : MonoBehaviour
+public class Draggable : MonoBehaviour
 {
     [SerializeField] private InputHandler _input;
     [SerializeField] private Vector2 _offset = Vector2.zero;
     public event Action<Vector2> OnChangedPosition;
+    public event Action OnEndDrag;
     
     private Vector2 _worldPosition;
     private Vector3 _defaultPosition;
@@ -51,9 +52,9 @@ public class Dragable : MonoBehaviour
             return;
         
         _isDraggable = false;
-        
-        Debug.Log($"TryToEndDrag");
 
+        OnEndDrag?.Invoke();
+        
         LeanTween.move(gameObject, _defaultPosition, 1f)
             .setSpeed(20f)
             .setOnStart(() => _collider.enabled = false)

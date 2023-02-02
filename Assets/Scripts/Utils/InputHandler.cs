@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-namespace Scriprs
+namespace Utils
 {
     public interface IInputHandler
     {

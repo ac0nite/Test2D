@@ -1,5 +1,6 @@
 
 using UnityEngine;
+using Utils;
 
 public interface ILineFactory
 {
@@ -48,7 +49,6 @@ public class ColliderSpawner : MonoBehaviour, ILineFactory
     public void AllDispose()
     {
         var active = _pool.Active();
-        Debug.Log($"COUNT: {active.Count}");
         foreach (var line in active)
         {
             line.ReleaseCollider();

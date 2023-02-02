@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace Gameplay.Core.Camera
+namespace Utils
 {
     public class CircularBuffer<T>
     {

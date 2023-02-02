@@ -1,5 +1,0 @@
-1.2.0
-- Upgrade Package to Unity 2020 or Higher
-
-1.0.0
-- First Release
